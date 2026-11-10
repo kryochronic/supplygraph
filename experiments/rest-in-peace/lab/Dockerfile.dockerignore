@@ -1,0 +1,19 @@
+# Build context for the lab image only (BuildKit reads <Dockerfile>.dockerignore).
+# Unlike the root .dockerignore it keeps mcp-server/, which J5 needs.
+.git
+**/.venv
+**/node_modules
+**/__pycache__
+**/*.egg-info
+**/.pytest_cache
+reports
+bench
+frontend
+data/*.db
+data/docs
+data/private
+deploy
+docs
+experiments/rest-in-peace/out
+mcp.env
+.env

@@ -1,0 +1,79 @@
+# Keycloak: the authorization server. It owns logins, consent, client registration and
+# token signing. The MCP server only ever sees the tokens it issues.
+#
+# Local shape: one replica in dev mode with the built-in H2 database on a volume.
+# Production shape (see docs/mcp/README.md, Stage 5): `start` (not start-dev), external
+# PostgreSQL, 2+ replicas clustered through the cache, TLS terminated at the ingress.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: keycloak-data
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  labels: {app: keycloak}
+spec:
+  replicas: 1
+  strategy: {type: Recreate} # H2 file cannot be shared by two pods
+  selector:
+    matchLabels: {app: keycloak}
+  template:
+    metadata:
+      labels: {app: keycloak}
+    spec:
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.8.0
+          args: ["start-dev"]
+          env:
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              valueFrom: {secretKeyRef: {name: sg-secrets, key: KEYCLOAK_ADMIN_USER}}
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom: {secretKeyRef: {name: sg-secrets, key: KEYCLOAK_ADMIN_PASSWORD}}
+            # The issuer is pinned to the public URL, so every token says the same `iss`
+            # whether Keycloak was reached by a browser or by a pod on the Service name.
+            - name: KC_HOSTNAME
+              valueFrom: {configMapKeyRef: {name: sg-config, key: KEYCLOAK_PUBLIC_URL}}
+            - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
+              value: "true"
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_PROXY_HEADERS
+              value: xforwarded
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            # Stage 3 adds KC_FEATURES=cimd,resource-indicators (components/mcp-2026-auth).
+          ports:
+            - {name: http, containerPort: 8080}
+            - {name: management, containerPort: 9000}
+          readinessProbe:
+            httpGet: {path: /health/ready, port: management}
+            periodSeconds: 10
+          startupProbe:
+            httpGet: {path: /health/started, port: management}
+            failureThreshold: 60
+            periodSeconds: 5
+          resources:
+            requests: {cpu: 250m, memory: 768Mi}
+            limits: {memory: 1536Mi}
+          volumeMounts:
+            - {name: data, mountPath: /opt/keycloak/data}
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: keycloak-data}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+spec:
+  selector: {app: keycloak}
+  ports:
+    - {name: http, port: 8080, targetPort: http}

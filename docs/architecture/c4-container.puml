@@ -1,0 +1,77 @@
+@startuml c4-container
+' SupplyGraph — C4 level 2: containers.
+' Preview in VS Code (PlantUML extension, Alt+D). Uses PlantUML's bundled C4 library, works offline.
+' Source of truth for decisions: the project register. Pipeline detail: docs/pipeline.md.
+
+!include <C4/C4_Container>
+
+LAYOUT_LEFT_RIGHT()
+HIDE_STEREOTYPE()
+
+AddElementTag("planned", $bgColor="#ffffff", $fontColor="#555555", $borderColor="#888888", $borderStyle=DashedLine(), $legendText="planned / proposed (not built)")
+AddElementTag("untrusted", $borderColor="#c2412d", $borderThickness="3", $legendText="untrusted source or proposer")
+AddElementTag("local", $bgColor="#2d6a4f", $legendText="localhost only (holds third-party text)")
+AddRelTag("planned", $textColor="#777777", $lineColor="#888888", $lineStyle=DashedLine(), $legendText="planned flow")
+AddRelTag("auth", $textColor="#2d5bd7", $lineColor="#2d5bd7", $legendText="OAuth 2.1 / JWT")
+
+Person(you, "Researcher", "You: ingests documents, reviews proposals, publishes the map")
+Person_Ext(reader, "Reader", "Reads the papers and the published map")
+System_Ext(agent, "MCP client", "Claude Code, or any MCP-capable agent")
+
+System_Boundary(sg, "SupplyGraph") {
+  Container(cli, "disg CLI", "Python, Typer", "ingest, categorise, expand, review push/pull, export")
+  Container(api, "API + graph UI", "FastAPI, React + dagre", "Theme graph, company view, review queue API; :58100")
+  ContainerDb(db, "Graph database", "SQLite + FTS5, Alembic", "Nodes, edges, companies, mappings (proposed / accepted / rejected), evidence, page chunks")
+  ContainerDb(docs, "Document store", "Filesystem", "data/docs/<COUNTRY>/<MIC>/<CODE>/, data/inbox/<KEY>/ (git-ignored)")
+  Container(llm, "Model layer", "Python module ai/llm.py", "Provider-neutral: one forced tool call, fixed JSON schema (D-26)")
+  Container(review, "Review tool", "Label Studio, SQLite", "One task per proposal: quote + page; accept / reject / re-grade (Q16)", $tags="planned+local")
+  Container(static, "Static build", "Single HTML file (Vite)", "The published map: weights only, no unsourced ownership (D-11, D-24)")
+
+  Boundary(gw, "Exchange gateway", "docker compose / k3d") {
+    Container(proxy, "TLS proxy", "Caddy, mkcert", "https://*.localtest.me:8443")
+    Container(kc, "Authorization server", "Keycloak 26", "Realm supplygraph; issues JWT access tokens")
+    Container(mcp, "Exchange MCP server", "Python, MCP SDK 2.3, stateless HTTP", "list_indices, get_constituents, compare_baskets, whoami, check_sources; resource server only")
+  }
+
+  Boundary(labb, "Paper experiments", "experiments/rest-in-peace") {
+    Container(lab, "Lab", "FastAPI + one HTML page", "Results, typed run launcher, live logs; :58200", $tags="local")
+    ContainerDb(bench, "Bench database", "SQLite", "out/bench.db: isolated copy, never the real queue (D-25)", $tags="local")
+  }
+}
+
+System_Ext(model, "Model API", "Anthropic, or any OpenAI-compatible endpoint: OpenAI, OpenRouter, Gemini, Groq, local Ollama / LM Studio", $tags="untrusted")
+System_Ext(filings, "Company documents", "Annual reports, RHPs, broker reports (PDF)", $tags="untrusted")
+System_Ext(exch, "Exchange sources", "NSE Indices CSVs, SEC EDGAR N-PORT; later NSE/BSE filings, EDINET")
+
+' --- the human-in-the-loop pipeline ---
+Rel(you, cli, "Runs")
+Rel(filings, docs, "Dropped in by hand (C4) or fetched (C3)")
+Rel(cli, docs, "Reads PDFs")
+Rel(cli, db, "Page chunks + FTS; proposed rows + evidence", "SQL")
+Rel(cli, llm, "Prompt: taxonomy + top-12 pages")
+Rel(llm, model, "Forced tool call", "HTTPS")
+Rel(cli, review, "review push: proposals as predictions", "REST, SDK", $tags="planned")
+Rel(you, review, "Accepts / rejects / re-grades", "Browser", $tags="planned")
+Rel(review, cli, "review pull: decisions", "REST, SDK", $tags="planned")
+Rel(api, db, "Reads graph, writes review decisions", "SQL")
+Rel(you, api, "Explores the map", "Browser")
+Rel(cli, static, "disg export + build:static")
+Rel(reader, static, "Opens", "Browser")
+
+' --- exchange gateway ---
+Rel(agent, proxy, "MCP over HTTPS", "Streamable HTTP")
+Rel(proxy, mcp, "Forwards", "HTTP")
+Rel(proxy, kc, "Login, token, JWKS", "HTTP")
+Rel(agent, kc, "Device / auth-code flow", "OAuth 2.1", $tags="auth")
+Rel(mcp, kc, "Fetches signing keys (JWKS)", "HTTP", $tags="auth")
+Rel(mcp, exch, "Constituents, holdings", "HTTPS, rate-limited")
+Rel(cli, proxy, "disg fetch: one MCP client among others (D-13)", "MCP", $tags="planned")
+
+' --- experiments ---
+Rel(you, lab, "Starts runs, reads results", "Browser")
+Rel(lab, bench, "J2–J4 write proposals here", "SQL")
+Rel(lab, llm, "Same model layer as production")
+Rel(lab, mcp, "J5 times the token checks (in-process copy)")
+
+SHOW_LEGEND()
+@enduml

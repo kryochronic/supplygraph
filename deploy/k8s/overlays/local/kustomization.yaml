@@ -1,0 +1,32 @@
+# k3d on your Mac. `make up` creates secrets.env (random passwords) on first run.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: supplygraph
+resources:
+  - ../../base
+# Stage 3 (MCP 2026-07-28 auth: CIMD + RFC 8707 resource indicators) — uncomment:
+# components:
+#   - ../../components/mcp-2026-auth
+configMapGenerator:
+  - name: sg-config
+    envs: [config.env]
+secretGenerator:
+  - name: sg-secrets
+    envs: [secrets.env]
+patches:
+  - target: {kind: Ingress, name: supplygraph}
+    patch: |-
+      - op: add
+        path: /spec/ingressClassName
+        value: traefik
+      - op: replace
+        path: /spec/rules/0/host
+        value: auth.localtest.me
+      - op: replace
+        path: /spec/rules/1/host
+        value: mcp.localtest.me
+      - op: add
+        path: /spec/tls
+        value:
+          - hosts: [auth.localtest.me, mcp.localtest.me]
+            secretName: localtest-tls # made by `make tls` from a mkcert certificate

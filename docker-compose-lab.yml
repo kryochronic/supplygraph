@@ -1,0 +1,35 @@
+# REST in Peace lab: results, runs and the J2 review sheet in one page.
+#   make lab-up        http://localhost:58200   (also starts the SupplyGraph app on :58100)
+#   make lab-down
+# Bound to 127.0.0.1 only: the review sheet and run logs contain broker-report text (D-25).
+# J2-J4 need ANTHROPIC_API_KEY in your shell when you run `make lab-up`; it is passed through,
+# never written to disk or baked into the image.
+
+include:
+  - docker-compose-app.yml
+
+services:
+  lab:
+    image: supplygraph-lab:dev
+    build:
+      context: .
+      dockerfile: experiments/rest-in-peace/lab/Dockerfile
+    ports:
+      - "127.0.0.1:${LAB_PORT:-58200}:58200"
+    environment:
+      # Model provider (D-26): passed through from your shell, never written to disk.
+      DISG_PROVIDER: ${DISG_PROVIDER:-anthropic}
+      DISG_BASE_URL: ${DISG_BASE_URL:-}
+      DISG_API_KEY: ${DISG_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DISG_GUARD_MODEL: ${DISG_GUARD_MODEL:-}
+      DISG_PRICE_IN: ${DISG_PRICE_IN:-}
+      DISG_PRICE_OUT: ${DISG_PRICE_OUT:-}
+      DISG_MODEL: ${DISG_MODEL:-}
+      LAB_APP_URL: http://supplygraph:8000
+    volumes:
+      - ./experiments/rest-in-peace:/app/experiments/rest-in-peace
+      - ./reports:/app/reports:ro
+    depends_on: [supplygraph]
+    restart: unless-stopped

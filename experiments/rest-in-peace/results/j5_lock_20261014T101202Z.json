@@ -1,0 +1,50 @@
+{
+  "experiment": "J5 lock cost",
+  "run_at": "20261014T101202Z",
+  "machine": "arm64 macOS-14.4-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "verify_ok": {
+    "n": 1200,
+    "p50_us": 75.2,
+    "p95_us": 117.4,
+    "mean_us": 82.0
+  },
+  "reject_wrong_audience": {
+    "n": 1200,
+    "p50_us": 72.9,
+    "p95_us": 104.7,
+    "mean_us": 78.6
+  },
+  "reject_expired": {
+    "n": 1200,
+    "p50_us": 72.8,
+    "p95_us": 116.2,
+    "mean_us": 81.1
+  },
+  "reject_bad_signature": {
+    "n": 1200,
+    "p50_us": 59.8,
+    "p95_us": 78.9,
+    "mean_us": 63.3
+  },
+  "jwks_fetches": 1,
+  "e2e_auth_off": {
+    "n": 300,
+    "p50_us": 1811.9,
+    "p95_us": 3525.2,
+    "mean_us": 2322.3
+  },
+  "e2e_auth_on": {
+    "n": 300,
+    "p50_us": 1800.3,
+    "p95_us": 2880.0,
+    "mean_us": 1952.8
+  },
+  "deny_no_token_401": {
+    "n": 300,
+    "p50_us": 410.7,
+    "p95_us": 766.0,
+    "mean_us": 473.9
+  },
+  "auth_overhead_p50_us": -11.6
+}

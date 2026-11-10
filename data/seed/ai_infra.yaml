@@ -1,0 +1,390 @@
+# Seed taxonomy: AI Infrastructure (India)
+#
+# Graph semantics
+#   node.requires: [ids]  → edge  consumer ──requires──▶ supplier
+#   The theme sits on the RIGHT of the graph; each hop left is one step
+#   further upstream ("shifting left") toward components and raw materials.
+#   Nodes may share suppliers (copper feeds cables, transformers, switchgear),
+#   so this is a DAG, not a tree.
+#
+# Node kinds: theme | system | component | material | service
+# Exposure:   core (segment is a primary revenue driver)
+#             meaningful (material but not dominant)
+#             peripheral (some exposure; story mostly elsewhere)
+#
+# All company mappings are v0 hand-curated from general knowledge, NOT from
+# filings. status: proposed until verified against an AR / RHP / investor deck.
+
+theme:
+  id: ai_infra_in
+  name: AI Infrastructure — India
+  description: >
+    Physical and service stack needed to stand up AI compute capacity in India,
+    from grid to GPU.
+
+nodes:
+  # ── Theme and first-hop systems ────────────────────────────────────────────
+  - id: ai_infra_in
+    name: AI Infrastructure (India)
+    kind: theme
+    requires: [ai_compute, dc_capacity, connectivity]
+
+  - id: ai_compute
+    name: AI compute / GPU cloud
+    kind: service
+    layer: L6
+    description: GPU-as-a-service, sovereign AI clouds, inference and training capacity.
+    requires: [it_hardware, dc_capacity]
+
+  - id: dc_capacity
+    name: Data-centre capacity
+    kind: system
+    layer: L6
+    description: Built, powered, cooled white space operated as colo or hyperscale.
+    india_position: ~1.8 GW operational mid-2026; 3–8 GW pipeline
+    requires: [power_supply, land_shell, electrical, cooling]
+
+  - id: connectivity
+    name: Connectivity
+    kind: system
+    layer: L5
+    requires: [optical_fibre, carriers]
+
+  # ── L0 Power supply (outside the fence) ───────────────────────────────────
+  - id: power_supply
+    name: Power supply
+    kind: system
+    layer: L0
+    description: Round-the-clock, increasingly green power delivered to site.
+    india_position: Generation adequate; transmission is the bottleneck
+    requires: [generation, transmission]
+
+  - id: generation
+    name: Generation (RE + firm)
+    kind: component
+    layer: L0
+    requires: [solar_modules]
+
+  - id: solar_modules
+    name: Solar modules & cells
+    kind: component
+    layer: L0
+
+  - id: transmission
+    name: Transmission & substations
+    kind: system
+    layer: L0
+    requires: [power_transformers, conductors, towers, transmission_epc]
+
+  - id: power_transformers
+    name: Power transformers (HV/EHV)
+    kind: component
+    layer: L0
+    requires: [crgo_steel, copper, transformer_oil]
+
+  - id: conductors
+    name: Conductors
+    kind: component
+    layer: L0
+    requires: [aluminium]
+
+  - id: towers
+    name: Towers & structures
+    kind: component
+    layer: L0
+    requires: [steel_cement]
+
+  - id: transmission_epc
+    name: Transmission EPC
+    kind: service
+    layer: L0
+
+  # ── L1 Land, shell & civil ────────────────────────────────────────────────
+  - id: land_shell
+    name: Land, shell & civil
+    kind: system
+    layer: L1
+    capex_share: ~5–10%
+    requires: [dc_parks, civil_epc, steel_cement]
+
+  - id: dc_parks
+    name: DC parks & land banks
+    kind: component
+    layer: L1
+
+  - id: civil_epc
+    name: Civil & MEP EPC
+    kind: service
+    layer: L1
+
+  # ── L2 Electrical (inside the fence) ──────────────────────────────────────
+  - id: electrical
+    name: Electrical (inside fence)
+    kind: system
+    layer: L2
+    capex_share: ~10–15%
+    requires: [switchgear, dist_transformers, cables, dg_sets, batteries, ups]
+
+  - id: switchgear
+    name: MV/LV switchgear & panels
+    kind: component
+    layer: L2
+    requires: [copper]
+
+  - id: dist_transformers
+    name: Distribution transformers
+    kind: component
+    layer: L2
+    requires: [crgo_steel, copper, transformer_oil]
+
+  - id: cables
+    name: Power & control cables
+    kind: component
+    layer: L2
+    requires: [copper, aluminium]
+
+  - id: dg_sets
+    name: DG sets / backup power
+    kind: component
+    layer: L2
+
+  - id: batteries
+    name: Li-ion storage (UPS / BESS)
+    kind: component
+    layer: L2
+
+  - id: ups
+    name: UPS / power electronics
+    kind: component
+    layer: L2
+    gap: true
+    notes: Dominated by unlisted / foreign players (Vertiv, Schneider APC, Delta).
+
+  # ── L3 Mechanical & cooling ───────────────────────────────────────────────
+  - id: cooling
+    name: Mechanical & cooling
+    kind: system
+    layer: L3
+    capex_share: ~5–10%
+    requires: [chillers, pumps_valves, pipes_hoses, liquid_cooling, water_treatment]
+
+  - id: chillers
+    name: Chillers & precision cooling
+    kind: component
+    layer: L3
+    requires: [refrigerants]
+
+  - id: pumps_valves
+    name: Pumps & valves
+    kind: component
+    layer: L3
+
+  - id: pipes_hoses
+    name: Pipes, tubes & hoses
+    kind: component
+    layer: L3
+
+  - id: liquid_cooling
+    name: Liquid cooling (CDU, cold plate, immersion)
+    kind: component
+    layer: L3
+    gap: true
+    notes: No clear listed Indian player yet.
+    requires: [pumps_valves, pipes_hoses, refrigerants]
+
+  - id: water_treatment
+    name: Water treatment
+    kind: service
+    layer: L3
+
+  # ── L4 IT hardware ────────────────────────────────────────────────────────
+  - id: it_hardware
+    name: IT hardware
+    kind: system
+    layer: L4
+    capex_share: ~60–75%
+    india_position: Almost entirely imported
+    requires: [gpus, servers, networking]
+
+  - id: gpus
+    name: GPUs, HBM & accelerators
+    kind: component
+    layer: L4
+    gap: true
+    notes: No listed Indian exposure (NVIDIA, AMD, SK hynix, Micron).
+
+  - id: servers
+    name: AI servers / HPC systems
+    kind: component
+    layer: L4
+    requires: [ems_pcb, gpus]
+
+  - id: ems_pcb
+    name: EMS / PCB assembly
+    kind: component
+    layer: L4
+    requires: [semis_osat]
+
+  - id: semis_osat
+    name: Semiconductors / OSAT
+    kind: component
+    layer: L4
+
+  - id: networking
+    name: Networking gear
+    kind: component
+    layer: L4
+    requires: [optical_fibre]
+
+  # ── L5 Connectivity ───────────────────────────────────────────────────────
+  - id: optical_fibre
+    name: Optical fibre & cable
+    kind: component
+    layer: L5
+
+  - id: carriers
+    name: Carriers & cable landing
+    kind: service
+    layer: L5
+
+  # ── L7 Raw materials (far left) ───────────────────────────────────────────
+  - id: copper
+    name: Copper
+    kind: material
+    layer: L7
+
+  - id: aluminium
+    name: Aluminium
+    kind: material
+    layer: L7
+
+  - id: crgo_steel
+    name: CRGO electrical steel
+    kind: material
+    layer: L7
+    india_position: Mostly imported; BIS QCO in force
+
+  - id: transformer_oil
+    name: Transformer oil
+    kind: material
+    layer: L7
+
+  - id: steel_cement
+    name: Steel & cement
+    kind: material
+    layer: L7
+
+  - id: refrigerants
+    name: Refrigerants & coolant fluids
+    kind: material
+    layer: L7
+
+# ── Companies ────────────────────────────────────────────────────────────────
+# ticker = symbol on `exchange` (default NSE); write NYSE::XYZ for other exchanges.
+# Optional: isin, listed. No parent / ownership fields here: per D-23 a control claim needs a cited
+# authoritative source (shareholding pattern, GLEIF L2, …), which the seed format cannot carry yet.
+# mappings: node, exposure, note (optional)
+companies:
+  # L0
+  - {ticker: NTPCGREEN,  name: NTPC Green Energy,       mappings: [{node: generation, exposure: meaningful}]}
+  - {ticker: ADANIGREEN, name: Adani Green Energy,      mappings: [{node: generation, exposure: meaningful}]}
+  - {ticker: TATAPOWER,  name: Tata Power,              mappings: [{node: generation, exposure: meaningful}, {node: transmission, exposure: peripheral}]}
+  - {ticker: JSWENERGY,  name: JSW Energy,              mappings: [{node: generation, exposure: meaningful}]}
+  - {ticker: ACMESOLAR,  name: ACME Solar,              mappings: [{node: generation, exposure: meaningful}]}
+  - {ticker: WAAREEENER, name: Waaree Energies,         mappings: [{node: solar_modules, exposure: core}]}
+  - {ticker: PREMIERENE, name: Premier Energies,        mappings: [{node: solar_modules, exposure: core}]}
+  - {ticker: POWERGRID,  name: Power Grid Corp,         mappings: [{node: transmission, exposure: core}]}
+  - {ticker: ADANIENSOL, name: Adani Energy Solutions,  mappings: [{node: transmission, exposure: core}]}
+  - {ticker: KEC,        name: KEC International,       mappings: [{node: transmission_epc, exposure: core}, {node: civil_epc, exposure: peripheral}]}
+  - {ticker: KPIL,       name: Kalpataru Projects,      mappings: [{node: transmission_epc, exposure: core}]}
+  - {ticker: TECHNOE,    name: Techno Electric,         mappings: [{node: transmission_epc, exposure: core}, {node: dc_capacity, exposure: meaningful, note: Own DC build-out}]}
+  - {ticker: SKIPPER,    name: Skipper,                 mappings: [{node: towers, exposure: core}]}
+  - {ticker: POWERINDIA, name: Hitachi Energy India,
+      mappings: [{node: power_transformers, exposure: core}, {node: switchgear, exposure: meaningful}]}
+  - {ticker: ENRIN,      name: Siemens Energy India,
+      mappings: [{node: power_transformers, exposure: core}]}
+  - {ticker: GVT&D,      name: GE Vernova T&D India,
+      mappings: [{node: power_transformers, exposure: core}, {node: switchgear, exposure: meaningful}]}
+  - {ticker: TARIL,      name: Transformers & Rectifiers, mappings: [{node: power_transformers, exposure: core}]}
+  - {ticker: APARINDS,   name: Apar Industries,         mappings: [{node: conductors, exposure: core}, {node: transformer_oil, exposure: core}, {node: cables, exposure: meaningful}]}
+
+  # L1
+  - {ticker: ANANTRAJ,   name: Anant Raj,               mappings: [{node: dc_parks, exposure: meaningful}, {node: dc_capacity, exposure: meaningful}]}
+  - {ticker: LODHA,      name: Lodha Developers,        mappings: [{node: dc_parks, exposure: peripheral, note: Palava DC park}]}
+  - {ticker: LT,         name: Larsen & Toubro,         mappings: [{node: civil_epc, exposure: meaningful}, {node: transmission_epc, exposure: meaningful}, {node: dc_capacity, exposure: peripheral}]}
+  - {ticker: AHLUCONT,   name: Ahluwalia Contracts,     mappings: [{node: civil_epc, exposure: meaningful}]}
+  - {ticker: SWSOLAR,    name: Sterling & Wilson,       mappings: [{node: civil_epc, exposure: peripheral}]}
+  - {ticker: JSWSTEEL,   name: JSW Steel,               mappings: [{node: steel_cement, exposure: peripheral}, {node: crgo_steel, exposure: peripheral, note: Ex-Thyssenkrupp Nashik CRGO unit}]}
+  - {ticker: TATASTEEL,  name: Tata Steel,              mappings: [{node: steel_cement, exposure: peripheral}]}
+  - {ticker: ULTRACEMCO, name: UltraTech Cement,        mappings: [{node: steel_cement, exposure: peripheral}]}
+
+  # L2
+  - {ticker: SIEMENS,    name: Siemens,
+      mappings: [{node: switchgear, exposure: core}]}
+  - {ticker: ABB,        name: ABB India,
+      mappings: [{node: switchgear, exposure: core}]}
+  - {ticker: SCHNEIDER,  name: Schneider Electric Infra,
+      mappings: [{node: switchgear, exposure: core}, {node: dist_transformers, exposure: meaningful}]}
+  - {ticker: CGPOWER,    name: CG Power,                mappings: [{node: power_transformers, exposure: core}, {node: switchgear, exposure: meaningful}, {node: semis_osat, exposure: peripheral, note: OSAT JV, early stage}]}
+  - {ticker: VOLTAMP,    name: Voltamp Transformers,    mappings: [{node: dist_transformers, exposure: core}]}
+  - {ticker: SHILCTECH,  name: Shilchar Technologies,   mappings: [{node: dist_transformers, exposure: core}]}
+  - {ticker: INDOTECH,   name: Indo Tech Transformers,  mappings: [{node: dist_transformers, exposure: core}]}
+  - {ticker: POLYCAB,    name: Polycab,                 mappings: [{node: cables, exposure: meaningful}]}
+  - {ticker: KEI,        name: KEI Industries,          mappings: [{node: cables, exposure: meaningful}]}
+  - {ticker: RRKABEL,    name: RR Kabel,                mappings: [{node: cables, exposure: meaningful}]}
+  - {ticker: FINCABLES,  name: Finolex Cables,          mappings: [{node: cables, exposure: meaningful}, {node: optical_fibre, exposure: peripheral}]}
+  - {ticker: HAVELLS,    name: Havells,                 mappings: [{node: cables, exposure: peripheral}, {node: switchgear, exposure: peripheral}]}
+  - {ticker: CUMMINSIND, name: Cummins India,
+      mappings: [{node: dg_sets, exposure: core}]}
+  - {ticker: KIRLOSENG,  name: Kirloskar Oil Engines,   mappings: [{node: dg_sets, exposure: core}]}
+  - {ticker: EXIDEIND,   name: Exide Industries,        mappings: [{node: batteries, exposure: meaningful}]}
+  - {ticker: ARE&M,      name: Amara Raja Energy & Mobility, mappings: [{node: batteries, exposure: meaningful}]}
+
+  # L3
+  - {ticker: BLUESTARCO, name: Blue Star,               mappings: [{node: chillers, exposure: meaningful}]}
+  - {ticker: VOLTAS,     name: Voltas,                  mappings: [{node: chillers, exposure: peripheral}]}
+  - {ticker: THERMAX,    name: Thermax,                 mappings: [{node: chillers, exposure: peripheral}]}
+  - {ticker: KIRLOSBROS, name: Kirloskar Brothers,      mappings: [{node: pumps_valves, exposure: peripheral}]}
+  - {ticker: KSB,        name: KSB,
+      mappings: [{node: pumps_valves, exposure: peripheral}]}
+  - {ticker: RATNAMANI,  name: Ratnamani Metals,        mappings: [{node: pipes_hoses, exposure: peripheral}]}
+  - {ticker: VENUSPIPES, name: Venus Pipes & Tubes,     mappings: [{node: pipes_hoses, exposure: peripheral}]}
+  - {ticker: AEROFLEX,   name: Aeroflex Industries,     mappings: [{node: pipes_hoses, exposure: peripheral}]}
+  - {ticker: SRF,        name: SRF,                     mappings: [{node: refrigerants, exposure: peripheral}]}
+  - {ticker: FLUOROCHEM, name: Gujarat Fluorochemicals, mappings: [{node: refrigerants, exposure: peripheral}]}
+  - {ticker: NAVINFLUOR, name: Navin Fluorine,          mappings: [{node: refrigerants, exposure: peripheral}]}
+  - {ticker: WABAG,      name: VA Tech Wabag,           mappings: [{node: water_treatment, exposure: peripheral}]}
+  - {ticker: IONEXCHANG, name: Ion Exchange,            mappings: [{node: water_treatment, exposure: peripheral}]}
+
+  # L4
+  - {ticker: NETWEB,     name: Netweb Technologies,     mappings: [{node: servers, exposure: core}]}
+  - {ticker: KAYNES,     name: Kaynes Technology,       mappings: [{node: ems_pcb, exposure: peripheral}, {node: semis_osat, exposure: peripheral}]}
+  - {ticker: SYRMA,      name: Syrma SGS,               mappings: [{node: ems_pcb, exposure: peripheral}]}
+  - {ticker: DIXON,      name: Dixon Technologies,      mappings: [{node: ems_pcb, exposure: peripheral}]}
+  - {ticker: AVALON,     name: Avalon Technologies,     mappings: [{node: ems_pcb, exposure: peripheral}]}
+  - {ticker: TEJASNET,   name: Tejas Networks,          mappings: [{node: networking, exposure: peripheral}]}
+  - {ticker: HFCL,       name: HFCL,                    mappings: [{node: networking, exposure: peripheral}, {node: optical_fibre, exposure: meaningful}]}
+
+  # L5
+  - {ticker: STLTECH,    name: Sterlite Technologies,   mappings: [{node: optical_fibre, exposure: core}]}
+  - {ticker: AKSHOPTFBR, name: Aksh Optifibre,          mappings: [{node: optical_fibre, exposure: core}]}
+  - {ticker: TATACOMM,   name: Tata Communications,     mappings: [{node: carriers, exposure: meaningful}, {node: dc_capacity, exposure: peripheral}]}
+  - {ticker: BHARTIARTL, name: Bharti Airtel,           mappings: [{node: carriers, exposure: peripheral}, {node: dc_capacity, exposure: peripheral, note: Nxtra}]}
+  - {ticker: RAILTEL,    name: RailTel,                 mappings: [{node: carriers, exposure: peripheral}]}
+
+  # L6
+  - {ticker: SIFY,       name: Sify Technologies,       mappings: [{node: dc_capacity, exposure: core, note: Infinit Spaces — check IPO status}]}
+  - {ticker: RELIANCE,   name: Reliance Industries,     mappings: [{node: dc_capacity, exposure: peripheral, note: Jamnagar AI DC}]}
+  - {ticker: ADANIENT,   name: Adani Enterprises,       mappings: [{node: dc_capacity, exposure: peripheral, note: AdaniConneX JV}]}
+  - {ticker: E2E,        name: E2E Networks,            mappings: [{node: ai_compute, exposure: core}]}
+
+  # L7
+  - {ticker: HINDALCO,   name: Hindalco,                mappings: [{node: copper, exposure: meaningful}, {node: aluminium, exposure: core}]}
+  - {ticker: HINDCOPPER, name: Hindustan Copper,        mappings: [{node: copper, exposure: core}]}
+  - {ticker: NATIONALUM, name: NALCO,                   mappings: [{node: aluminium, exposure: core}]}
+  - {ticker: VEDL,       name: Vedanta,                 mappings: [{node: aluminium, exposure: meaningful}]}
+  - {ticker: SOTL,       name: Savita Oil Technologies, mappings: [{node: transformer_oil, exposure: core}]}
+
+  # Off-thesis holding — kept so the portfolio overlay can show it as unmapped
+  - {ticker: CARRARO,    name: Carraro India,
+      mappings: []}

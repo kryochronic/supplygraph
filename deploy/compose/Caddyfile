@@ -1,0 +1,26 @@
+# TLS front door for docker-compose-mcp.yml. Caddy plays the part Traefik plays in k3d:
+# terminate TLS with the mkcert certificate and route by hostname.
+{
+	auto_https off # certificates come from mkcert, not ACME; port 80 is not used
+}
+
+auth.localtest.me:443 {
+	tls /certs/localtest.pem /certs/localtest-key.pem
+	reverse_proxy keycloak:8080
+}
+
+mcp.localtest.me:443 {
+	tls /certs/localtest.pem /certs/localtest-key.pem
+	# Re-resolve the service name every few seconds so `make mcp-scale N=3` is picked up,
+	# then round-robin. No sticky sessions: any replica can serve any request.
+	reverse_proxy {
+		dynamic a {
+			name exchange-mcp
+			port 8000
+			refresh 5s
+		}
+		lb_policy round_robin
+		health_uri /readyz
+		health_interval 10s
+	}
+}

@@ -1,0 +1,17 @@
+# Local cluster: k3d (k3s in Docker). k3s ships Traefik as the ingress controller and
+# metrics-server, so Ingress and the HorizontalPodAutoscaler work with no add-ons.
+#   k3d cluster create --config deploy/k3d.yaml
+# Host port 8443 → Traefik's HTTPS entrypoint (:443) inside the cluster. *.localtest.me
+# resolves to 127.0.0.1 in public DNS, so https://auth.localtest.me:8443 and
+# https://mcp.localtest.me:8443 need no /etc/hosts edits. TLS is not optional even locally:
+# OAuth 2.1 and the MCP spec require HTTPS for anything but loopback, and Keycloak's login
+# cookies are marked Secure, so a browser drops them on plain http://auth.localtest.me.
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: sg
+servers: 1
+agents: 2 # two worker nodes, so replicas and the disruption budget have somewhere to spread
+ports:
+  - port: 8443:443
+    nodeFilters: [loadbalancer]

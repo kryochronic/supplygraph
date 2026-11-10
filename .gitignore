@@ -1,0 +1,30 @@
+__pycache__/
+*.egg-info/
+.venv/
+.pytest_cache/
+node_modules/
+frontend/dist/
+frontend/dist-static/
+frontend/public/graph.json
+data/supplygraph.db
+data/docs/
+data/private/
+.DS_Store
+.env
+
+# exchange MCP (compose): generated secrets; .mk-incoming is a leftover delivery folder
+mcp.env
+.mk-incoming/
+fleet.local.md
+
+# third-party research PDFs (copyright); local agent state
+reports/
+.claude/
+
+# hosted stack: secrets, backups, push-data staging
+prod.env
+backups/
+.push/
+
+# make publish output
+dist/

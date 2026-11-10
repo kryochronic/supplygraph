@@ -1,0 +1,17 @@
+.git
+.venv
+**/node_modules
+**/__pycache__
+**/*.egg-info
+.pytest_cache
+frontend/dist
+frontend/dist-static
+frontend/public/graph.json
+data/*.db
+data/docs
+data/private
+mcp-server
+mcp.env
+deploy
+docs
+.env

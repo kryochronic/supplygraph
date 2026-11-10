@@ -1,0 +1,40 @@
+# SupplyGraph app (API + built UI) in one container.
+#   make app-up        http://localhost:58100
+#   make app-seed      load data/seed/ai_infra.yaml into the container's database
+# State is a named volume. To use your host database instead: APP_DATA=./data make app-up
+# (SQLite on a macOS bind mount works but is slower; do not run the host `disg serve` at the same time).
+
+services:
+  supplygraph:
+    image: supplygraph:dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${APP_PORT:-58100}:8000"
+    environment:
+      DISG_MODEL: ${DISG_MODEL:-claude-sonnet-4-5}
+      # Passed through from your shell; never baked into the image.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ${APP_DATA:-sg_data}:/app/data
+    restart: unless-stopped
+
+  # Hot-reload UI for development: docker compose -f docker-compose-app.yml --profile dev up frontend
+  frontend:
+    profiles: [dev]
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      VITE_API_PROXY: http://supplygraph:8000
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+    depends_on: [supplygraph]
+
+volumes:
+  sg_data:

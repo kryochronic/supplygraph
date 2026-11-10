@@ -1,0 +1,14 @@
+# Preferred metric names, passed to extract and reconcile so figures are named the same way across runs.
+# Grows from review: a name a reviewer confirms or corrects is added here (C25). Synonyms are hints to the
+# model, not rules for code.
+Sales: [Revenue from operations, Turnover, Net sales, Total income from operations]
+Total income: [Total revenue]
+EBITDA: [Profit before depreciation, amortisation, finance cost and tax, Operating profit]
+Profit before tax: [PBT]
+Profit after tax: [PAT, Net profit, Profit for the year]
+EPS: [Earnings per share, Basic EPS]
+Exceptional items: []
+Order book: [Order backlog, Unexecuted orders]
+Order inflow: [New orders]
+Capex: [Capital expenditure]
+Dividend: [Dividend per share]

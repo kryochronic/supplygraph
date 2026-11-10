@@ -1,0 +1,21 @@
+# Hostnames are placeholders; each overlay patches them. Plain Ingress keeps the base
+# portable: k3d uses Traefik, a cloud overlay can set its own ingressClassName or swap
+# this for a Gateway API HTTPRoute.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: supplygraph
+spec:
+  rules:
+    - host: auth.example.invalid
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: {service: {name: keycloak, port: {name: http}}}
+    - host: mcp.example.invalid
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: {service: {name: exchange-mcp, port: {name: http}}}

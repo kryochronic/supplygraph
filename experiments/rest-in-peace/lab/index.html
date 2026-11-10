@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>REST in Peace lab</title>
+<style>
+  :root {
+    --bg: #f7f6f3; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a66; --line: #e3e1dc;
+    --accent: #2d5bd7; --ok: #1f8a4c; --bad: #c2412d; --warn: #b7791f; --code: #f0eee9;
+    --s1: #2d5bd7; --s2: #c2412d; --s3: #1f8a4c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151514; --panel: #1e1e1c; --ink: #ecebe7; --muted: #9a9993; --line: #33322f;
+      --accent: #7b9bff; --ok: #4cc287; --bad: #ff7a63; --warn: #e8b04a; --code: #262624;
+      --s1: #7b9bff; --s2: #ff7a63; --s3: #4cc287; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: baseline; padding: 16px 24px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 18px; margin: 0; }
+  header .sub { color: var(--muted); }
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+  .pill { border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 12px; color: var(--muted); }
+  .pill.ok { color: var(--ok); border-color: var(--ok); } .pill.bad { color: var(--bad); border-color: var(--bad); }
+  nav { display: flex; gap: 4px; padding: 0 24px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  nav button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 12px; color: var(--muted); font: inherit; cursor: pointer; white-space: nowrap; }
+  nav button.on { color: var(--ink); border-color: var(--accent); }
+  main { padding: 20px 24px 48px; max-width: 1200px; }
+  section { display: none; } section.on { display: block; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .card h3 { margin: 0 0 4px; font-size: 15px; } .card .claim { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+  .kv { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-variant-numeric: tabular-nums; }
+  .kv span:nth-child(odd) { color: var(--muted); }
+  .empty { color: var(--muted); font-style: italic; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  .md table { margin: 8px 0 16px; } .md h1 { font-size: 20px; } .md h2 { font-size: 16px; margin-top: 28px; }
+  code, pre { background: var(--code); border-radius: 4px; font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  code { padding: 1px 4px; } pre { padding: 12px; overflow: auto; max-height: 60vh; white-space: pre-wrap; }
+  form.run { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 10px 0; }
+  label { display: grid; gap: 2px; font-size: 12px; color: var(--muted); }
+  input, select { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
+  button.go { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 8px 14px; font: inherit; cursor: pointer; }
+  button.go:disabled { opacity: .5; cursor: default; }
+  button.ghost { background: none; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; color: var(--ink); font: inherit; cursor: pointer; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .tag { font-size: 11px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
+  .tag.api { color: var(--warn); border-color: var(--warn); }
+  .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; } .bar i { display: block; height: 100%; background: var(--accent); }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 6px; flex-wrap: wrap; }
+  .legend b { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+  .verdicts button { border: 1px solid var(--line); background: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; color: var(--muted); font-size: 12px; }
+  .verdicts button.on[data-v=correct] { color: var(--ok); border-color: var(--ok); }
+  .verdicts button.on[data-v=wrong] { color: var(--bad); border-color: var(--bad); }
+  .verdicts button.on[data-v=unsure] { color: var(--warn); border-color: var(--warn); }
+  .quote { max-width: 420px; font-size: 12px; }
+  .note { color: var(--muted); font-size: 12px; margin: 6px 0 12px; }
+  @media (max-width: 640px) { header, nav, main { padding-left: 16px; padding-right: 16px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>REST in Peace — lab</h1><span class="sub">SupplyGraph as the worked example</span>
+  <div class="pills" id="status"></div>
+</header>
+<nav id="tabs">
+  <button data-t="overview" class="on">Overview</button>
+  <button data-t="run">Run</button>
+  <button data-t="review">Review (J2)</button>
+  <button data-t="summary">Summary</button>
+</nav>
+<main>
+  <section id="overview" class="on"><div class="grid" id="cards"></div></section>
+  <section id="run">
+    <div class="grid" id="runforms"></div>
+    <div class="card" style="margin-top:16px">
+      <div class="row"><h3 style="margin:0">Log</h3><span id="logid" class="tag"></span>
+        <button class="ghost" id="stop" style="margin-left:auto;display:none">Stop</button></div>
+      <pre id="log" class="empty">Start a run to see its output here.</pre>
+      <div class="row" id="history"></div>
+    </div>
+  </section>
+  <section id="review">
+    <p class="note">Every mapping J2 proposed, with the quote it gave. Mark whether the mapping is actually right.
+      "Grounded" only means the quote is on the page; your verdict is the correctness check (J6).</p>
+    <div id="reviewbody" class="card"></div>
+  </section>
+  <section id="summary"><div class="card md" id="md"></div></section>
+</main>
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const pct = x => x == null ? "—" : Math.round(x * 100) + "%";
+const api = async (p, o) => { const r = await fetch(p, o); if (!r.ok) throw new Error((await r.json()).detail || r.statusText); return r.json(); };
+
+document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#tabs button, main section").forEach(x => x.classList.remove("on"));
+  b.classList.add("on"); $("#" + b.dataset.t).classList.add("on");
+  if (b.dataset.t === "review") loadReview();
+});
+
+async function loadStatus() {
+  const s = await api("/api/status");
+  $("#status").innerHTML = [
+    [`${esc(s.provider)} · key ${s.api_key ? "set" : "missing"}`, s.api_key],
+    [`${s.reports.toLocaleString()} PDFs`, s.reports > 0],
+    [s.bench_db_mb != null ? `bench.db ${s.bench_db_mb} MB` : "bench.db empty", null],
+    [`<a href="${esc(s.app_url)}" target="_blank" style="color:inherit">app ${s.app_up ? "up" : "down"}</a>`, s.app_up],
+    [s.running ? `running ${esc(s.running)}` : "idle", null],
+  ].map(([t, ok]) => `<span class="pill ${ok === true ? "ok" : ok === false ? "bad" : ""}">${t}</span>`).join("");
+  return s;
+}
+
+function kv(pairs) { return `<div class="kv">${pairs.map(([k, v]) => `<span>${esc(k)}</span><span>${v}</span>`).join("")}</div>`; }
+function card(title, claim, body) { return `<div class="card"><h3>${title}</h3><div class="claim">${claim}</div>${body}</div>`; }
+
+function lineChart(series, h = 160) {
+  const w = 340, pad = 28, all = series.flatMap(s => s.values), max = Math.max(...all, 1), n = Math.max(...series.map(s => s.values.length));
+  const x = i => pad + (i / Math.max(n - 1, 1)) * (w - pad - 8), y = v => h - pad + 4 - (v / max) * (h - pad - 8);
+  const lines = series.map(s => `<polyline fill="none" stroke="${s.color}" stroke-width="2" points="${s.values.map((v, i) => `${x(i)},${y(v)}`).join(" ")}"/>`).join("");
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="tokens read per step">
+    <line x1="${pad}" y1="${h - pad + 4}" x2="${w - 8}" y2="${h - pad + 4}" stroke="var(--line)"/>
+    <text x="${pad}" y="12" font-size="10" fill="var(--muted)">${Math.round(max).toLocaleString()} tokens</text>
+    <text x="${w - 8}" y="${h - 6}" font-size="10" fill="var(--muted)" text-anchor="end">step ${n}</text>${lines}</svg>
+    <div class="legend">${series.map(s => `<span><b style="background:${s.color}"></b>${s.name}</span>`).join("")}</div>`;
+}
+
+async function loadResults() {
+  const { latest, summary } = await api("/api/results");
+  const L = k => latest[k]?.data;
+  const cards = [];
+  const j1 = L("j1");
+  cards.push(card("J1 — can the pipeline read the PDFs?", "Groundwork · no API", j1 ? kv([
+    ["PDFs · pages", `${j1.pdfs.toLocaleString()} · ${j1.pages.toLocaleString()}`],
+    ["Unreadable", j1.unreadable], ["Pages dropped as empty", `${j1.pages_dropped_as_empty} (${pct(j1.pages_dropped_share)})`],
+    ["Second-extractor agreement (median)", j1.extractor_agreement_p50 ?? "—"],
+    ["Seed companies with reports", `${j1.seed_companies_with_reports} of ${j1.seed_companies}`]]) : `<p class="empty">Not run.</p>`));
+  const j2 = L("j2");
+  cards.push(card("J2 — does the model invent links?", "§5 · calls the API", j2 ? kv([
+    ["Calls · companies", `${j2.calls} · ${j2.companies}`], ["Mappings proposed", j2.mappings_proposed],
+    ["On a node that doesn't exist", j2.mappings_on_unknown_node], ["With a grounded quote", pct(j2.mappings_grounded_share)],
+    ["Seed mappings recovered", `${j2.seed_pairs_recovered}/${j2.seed_pairs} (${pct(j2.seed_recall)})`],
+    ["New claims for review", j2.pairs_not_in_seed], ["Cost per call", `$${j2.cost_usd_per_call}`]]) : `<p class="empty">Not run yet.</p>`));
+  for (const d of ["none", "harden"]) {
+    const j3 = L("j3_" + d);
+    const body = j3 ? `<table><tr><th>Goal</th><th>n</th><th>Followed</th><th>Passes checks</th><th>Attacker quote kept</th></tr>${
+      Object.entries(j3.by_goal).map(([g, v]) => `<tr><td>${g}</td><td>${v.n}</td><td>${pct(v.followed)}</td><td>${pct(v.passes)}</td><td>${pct(v.from_doc)}</td></tr>`).join("")
+    }</table>` : `<p class="empty">Not run yet.</p>`;
+    cards.push(card(`J3 — prompt injection, defence: ${d}`, "§2, B.1, §5 · calls the API", body));
+  }
+  const j4s = Object.keys(latest).filter(k => k.startsWith("j4_"));
+  if (!j4s.length) cards.push(card("J4 — what a guard costs", "§3, B.2, B.4 · calls the API", `<p class="empty">Not run yet.</p>`));
+  for (const k of j4s) {
+    const r = L(k), clean = r.sessions.clean || Object.values(r.sessions)[0];
+    const colors = ["var(--s1)", "var(--s2)", "var(--s3)"];
+    const series = Object.entries(clean).map(([name, v], i) => ({ name, values: v.tokens_read_per_step, color: colors[i % 3] }));
+    const caught = Object.entries(r.sessions).filter(([s]) => s !== "clean").map(([s, st]) =>
+      `<tr><td>${s}</td>${Object.values(st).map(v => `<td>${v.first_flag_step ?? "missed"}</td>`).join("")}</tr>`).join("");
+    cards.push(card(`J4 — guard ${esc(r.guard)}`, `§3, B.2, B.4 · ${r.steps} steps · tokens read per step`, lineChart(series) +
+      `<table style="margin-top:10px"><tr><th>Attack</th>${Object.keys(clean).map(s => `<th>${s}</th>`).join("")}</tr>${caught}</table>`));
+  }
+  const j5 = L("j5");
+  cards.push(card("J5 — what the lock costs", "§5, B.3 · no API", j5 ? kv([
+    ["JWT verify (p50)", `${j5.verify_ok.p50_us} µs`], ["Reject wrong audience (p50)", `${j5.reject_wrong_audience.p50_us} µs`],
+    ["401 over HTTP (p50)", `${j5.deny_no_token_401.p50_us} µs`],
+    ["MCP tool call, auth off / on (p50)", `${(j5.e2e_auth_off.p50_us / 1000).toFixed(2)} / ${(j5.e2e_auth_on.p50_us / 1000).toFixed(2)} ms`]]) : `<p class="empty">Not run.</p>`));
+  $("#cards").innerHTML = cards.join("");
+  $("#md").innerHTML = markdown(summary) || `<p class="empty">No summary yet.</p>`;
+}
+
+function markdown(src) {
+  const out = [], lines = src.split("\n");
+  const inline = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/_([^_]+)_/g, "<i>$1</i>");
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (l.startsWith("|")) {
+      const rows = [];
+      while (i < lines.length && lines[i].startsWith("|")) rows.push(lines[i++]);
+      i--;
+      const cells = r => r.slice(1, -1).split("|").map(c => c.trim());
+      out.push(`<table><tr>${cells(rows[0]).map(c => `<th>${inline(c)}</th>`).join("")}</tr>${rows.slice(2).map(r => `<tr>${cells(r).map(c => `<td>${inline(c)}</td>`).join("")}</tr>`).join("")}</table>`);
+    } else if (/^#{1,3} /.test(l)) { const n = l.match(/^#+/)[0].length; out.push(`<h${n}>${inline(l.slice(n + 1))}</h${n}>`); }
+    else if (l.trim()) out.push(`<p>${inline(l)}</p>`);
+  }
+  return out.join("");
+}
+
+async function loadForms() {
+  const ex = await api("/api/experiments");
+  $("#runforms").innerHTML = Object.entries(ex).map(([k, e]) => `
+    <div class="card"><div class="row"><h3 style="margin:0">${esc(e.title)}</h3>${e.api ? `<span class="tag api">API · $</span>` : `<span class="tag">free</span>`}</div>
+    <form class="run" data-exp="${k}">${Object.entries(e.args).map(([n, a]) => {
+      const lab = `${n.replace(/_/g, " ")}${a.help ? ` <span title="${esc(a.help)}">ⓘ</span>` : ""}`;
+      if (a.kind === "choice") return `<label>${lab}<select name="${n}">${a.choices.map(c => `<option ${c === a.default ? "selected" : ""}>${c}</option>`).join("")}</select></label>`;
+      if (a.kind === "bool") return `<label>${lab}<input type="checkbox" name="${n}" ${a.default ? "checked" : ""}></label>`;
+      if (a.kind === "model") return `<label>${lab}<input type="text" name="${n}" value="${esc(a.default)}" placeholder="model id" spellcheck="false"></label>`;
+      return `<label>${lab}<input type="number" name="${n}" value="${a.default}" min="${a.min}" max="${a.max}" step="${a.kind === "float" ? "0.1" : "1"}"></label>`;
+    }).join("")}</form><button class="go" data-exp="${k}">Run</button></div>`).join("");
+  document.querySelectorAll("button.go").forEach(b => b.onclick = () => run(b.dataset.exp));
+}
+
+let es;
+async function run(exp) {
+  const f = $(`form[data-exp="${exp}"]`), args = {};
+  f.querySelectorAll("input, select").forEach(el => args[el.name] = el.type === "checkbox" ? el.checked : el.type === "number" ? Number(el.value) : el.value);
+  try { const { id } = await api("/api/runs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ experiment: exp, args }) }); follow(id); }
+  catch (e) { $("#log").classList.remove("empty"); $("#log").textContent = "Not started: " + e.message; }
+  loadStatus();
+}
+
+function follow(id) {
+  es?.close(); $("#log").classList.remove("empty"); $("#log").textContent = ""; $("#logid").textContent = id;
+  $("#stop").style.display = ""; $("#stop").onclick = () => api(`/api/runs/${id}/stop`, { method: "POST" });
+  es = new EventSource(`/api/runs/${id}/log`);
+  es.onmessage = e => { const p = $("#log"); p.textContent += JSON.parse(e.data) + "\n"; p.scrollTop = p.scrollHeight; };
+  es.addEventListener("done", () => { es.close(); $("#stop").style.display = "none"; loadResults(); loadStatus(); loadHistory(); });
+}
+
+async function loadHistory() {
+  const runs = await api("/api/runs");
+  $("#history").innerHTML = runs.length ? `<span class="note">Recent:</span>` + runs.map(r =>
+    `<button class="ghost" data-id="${esc(r.id)}">${r.done ? (r.ok ? "✓" : "✗") : "…"} ${esc(r.id)}</button>`).join("") : "";
+  document.querySelectorAll("#history button").forEach(b => b.onclick = () => follow(b.dataset.id));
+}
+
+async function loadReview() {
+  const rows = await api("/api/review");
+  if (!rows.length) { $("#reviewbody").innerHTML = `<p class="empty">No proposals yet: run J2 first.</p>`; return; }
+  const done = rows.filter(r => r.verdict).length;
+  $("#reviewbody").innerHTML = `<div class="row" style="margin-bottom:8px"><span>${done} of ${rows.length} reviewed</span>
+    <div class="bar" style="flex:1;max-width:240px"><i style="width:${done / rows.length * 100}%"></i></div></div>
+    <div style="overflow-x:auto"><table><tr><th>Company</th><th>Node</th><th>Exposure</th><th>Grounded</th><th>In seed</th><th>Quote</th><th>Verdict</th></tr>
+    ${rows.map((r, i) => `<tr><td>${esc(r.ticker.split("::").pop())}</td><td>${esc(r.node_id)}</td><td>${esc(r.exposure)}</td>
+      <td>${r.grounded === "True" ? "yes" : "no"}</td><td>${r.in_seed === "True" ? "yes" : "no"}</td>
+      <td class="quote">${esc(r.quote)}<div class="note">${esc(r.document)} p.${esc(r.page)}</div></td>
+      <td class="verdicts" data-row="${i}">${["correct", "wrong", "unsure"].map(v => `<button data-v="${v}" class="${r.verdict === v ? "on" : ""}">${v}</button>`).join(" ")}</td></tr>`).join("")}
+    </table></div>`;
+  document.querySelectorAll(".verdicts button").forEach(b => b.onclick = async () => {
+    const td = b.parentElement, v = b.classList.contains("on") ? "" : b.dataset.v;
+    await api(`/api/review/${td.dataset.row}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ verdict: v }) });
+    td.querySelectorAll("button").forEach(x => x.classList.toggle("on", x.dataset.v === v));
+  });
+}
+
+loadStatus().then(s => s.running && follow(s.running));
+loadResults(); loadForms(); loadHistory();
+setInterval(loadStatus, 5000);
+</script>
+</body>
+</html>

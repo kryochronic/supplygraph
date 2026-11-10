@@ -1,0 +1,104 @@
+# The exchange MCP server. Stateless: any pod can answer any request, so scaling is
+# just more replicas behind the Service. What *does* differ per pod (cache, SEC rate
+# limiter) is covered in docs/mcp/README.md, Stage 4.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: exchange-mcp
+  labels: {app: exchange-mcp}
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: exchange-mcp}
+  template:
+    metadata:
+      labels: {app: exchange-mcp}
+    spec:
+      # Spread replicas over nodes so losing one node does not take the service down.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: {app: exchange-mcp}
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: mcp
+          image: sg-exchange-mcp:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8000}
+          env:
+            - name: SG_MCP_PUBLIC_URL
+              valueFrom: {configMapKeyRef: {name: sg-config, key: MCP_RESOURCE_URL}}
+            - name: SG_OIDC_ISSUER
+              valueFrom: {configMapKeyRef: {name: sg-config, key: OIDC_ISSUER}}
+            # Keys are fetched in-cluster; the issuer string stays the public one.
+            - name: SG_OIDC_JWKS_URL
+              value: http://keycloak:8080/realms/supplygraph/protocol/openid-connect/certs
+            - name: SG_ALLOWED_HOSTS
+              valueFrom: {configMapKeyRef: {name: sg-config, key: MCP_ALLOWED_HOSTS}}
+            - name: SEC_USER_AGENT
+              valueFrom: {configMapKeyRef: {name: sg-config, key: SEC_USER_AGENT}}
+            - name: SEC_RATE_PER_S
+              valueFrom: {configMapKeyRef: {name: sg-config, key: SEC_RATE_PER_S_PER_POD}}
+          readinessProbe: # not ready until Keycloak's signing keys are loaded
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 20
+          lifecycle:
+            preStop: # let the Service drop this pod before it stops accepting connections
+              sleep: {seconds: 5}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: exchange-mcp
+spec:
+  selector: {app: exchange-mcp}
+  ports:
+    - {name: http, port: 8000, targetPort: http}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: exchange-mcp
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: exchange-mcp}
+  minReplicas: 2
+  maxReplicas: 5 # x SEC_RATE_PER_S_PER_POD (2) = 10 req/s, the SEC per-requester cap
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: {type: Utilization, averageUtilization: 70}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300 # don't flap: cold caches cost upstream requests
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: exchange-mcp
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: {app: exchange-mcp}

@@ -1,0 +1,35 @@
+# Front door for docker-compose-prod.yml: Let's Encrypt certificates, HTTPS only, route by hostname.
+{
+	email {$ACME_EMAIL}
+}
+
+# The app. Every request goes through oauth2-proxy, which sends anyone without a session to Keycloak.
+{$SG_HOST} {
+	encode zstd gzip
+	request_body {
+		max_size 200MB # annual reports uploaded from the company card
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+	reverse_proxy oauth2-proxy:4180 {
+		transport http {
+			read_timeout 10m # Ask and Fetch wait on the model and on NSE
+		}
+	}
+}
+
+# Keycloak: login pages and the OIDC endpoints only.
+{$AUTH_HOST} {
+	# The admin console and the master realm are not on the internet: use the SSH tunnel (docs/deploy/vm.md).
+	@admin path /admin /admin/* /realms/master /realms/master/*
+	respond @admin 404
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	reverse_proxy keycloak:8080
+}

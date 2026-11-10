@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+<title>iShares Trust (S000099999)</title>
+<entry>
+<category label="form type" scheme="https://www.sec.gov/" term="NPORT-P"/>
+<content type="text/xml">
+<accession-number>0001752724-26-111111</accession-number>
+<filing-date>2026-08-28</filing-date>
+<filing-href>https://www.sec.gov/Archives/edgar/data/1100663/000175272426111111/0001752724-26-111111-index.htm</filing-href>
+<filing-type>NPORT-P</filing-type>
+</content>
+</entry>
+<entry>
+<content type="text/xml">
+<filing-href>https://www.sec.gov/Archives/edgar/data/1100663/000175272426000001/0001752724-26-000001-index.htm</filing-href>
+<filing-type>NPORT-P</filing-type>
+</content>
+</entry>
+</feed>

@@ -1,0 +1,31 @@
+{
+  "_comment": "Baskets the gateway can serve. 'verified' flips to true only after a live fetch has succeeded (make check-sources). niftyindices file names marked false are inferred from the site's naming pattern and may need correcting.",
+  "baskets": [
+    {"id": "nifty50", "name": "Nifty 50", "kind": "index", "country": "IN", "adapter": "niftyindices", "ref": "ind_nifty50list.csv", "verified": false},
+    {"id": "niftynext50", "name": "Nifty Next 50", "kind": "index", "country": "IN", "adapter": "niftyindices", "ref": "ind_niftynext50list.csv", "verified": false},
+    {"id": "nifty100", "name": "Nifty 100", "kind": "index", "country": "IN", "adapter": "niftyindices", "ref": "ind_nifty100list.csv", "verified": false},
+    {"id": "nifty500", "name": "Nifty 500", "kind": "index", "country": "IN", "adapter": "niftyindices", "ref": "ind_nifty500list.csv", "verified": false},
+    {"id": "niftymidcap150", "name": "Nifty Midcap 150", "kind": "index", "country": "IN", "adapter": "niftyindices", "ref": "ind_niftymidcap150list.csv", "verified": false},
+    {"id": "niftysmallcap250", "name": "Nifty Smallcap 250", "kind": "index", "country": "IN", "adapter": "niftyindices", "ref": "ind_niftysmallcap250list.csv", "verified": false},
+    {"id": "niftyit", "name": "Nifty IT", "kind": "index", "country": "IN", "adapter": "niftyindices", "ref": "ind_niftyitlist.csv", "verified": false},
+    {"id": "nifty_india_digital", "name": "Nifty India Digital", "kind": "index", "country": "IN", "adapter": "niftyindices", "ref": "ind_niftyindiadigital_list.csv", "verified": false},
+    {"id": "nifty_india_defence", "name": "Nifty India Defence", "kind": "index", "country": "IN", "adapter": "niftyindices", "ref": "ind_niftyindiadefence_list.csv", "verified": false},
+    {"id": "nifty_india_manufacturing", "name": "Nifty India Manufacturing", "kind": "index", "country": "IN", "adapter": "niftyindices", "ref": "ind_niftyindiamanufacturing_list.csv", "verified": false},
+    {"id": "nifty_cpse", "name": "Nifty CPSE", "kind": "index", "country": "IN", "adapter": "niftyindices", "ref": "ind_niftycpselist.csv", "verified": false},
+    {"id": "nifty_infra", "name": "Nifty Infrastructure", "kind": "index", "country": "IN", "adapter": "niftyindices", "ref": "ind_niftyinfralist.csv", "verified": false},
+
+    {"id": "SMH", "name": "VanEck Semiconductor ETF", "kind": "fund", "country": "US", "adapter": "sec_nport", "ref": "SMH", "verified": false},
+    {"id": "SOXX", "name": "iShares Semiconductor ETF", "kind": "fund", "country": "US", "adapter": "sec_nport", "ref": "SOXX", "verified": false},
+    {"id": "XLK", "name": "Technology Select Sector SPDR Fund", "kind": "fund", "country": "US", "adapter": "sec_nport", "ref": "XLK", "verified": false},
+    {"id": "VGT", "name": "Vanguard Information Technology ETF", "kind": "fund", "country": "US", "adapter": "sec_nport", "ref": "VGT", "verified": false},
+    {"id": "IGV", "name": "iShares Expanded Tech-Software Sector ETF", "kind": "fund", "country": "US", "adapter": "sec_nport", "ref": "IGV", "verified": false},
+    {"id": "AIQ", "name": "Global X Artificial Intelligence & Technology ETF", "kind": "fund", "country": "US", "adapter": "sec_nport", "ref": "AIQ", "verified": false},
+    {"id": "BOTZ", "name": "Global X Robotics & Artificial Intelligence ETF", "kind": "fund", "country": "US", "adapter": "sec_nport", "ref": "BOTZ", "verified": false},
+    {"id": "INDA", "name": "iShares MSCI India ETF", "kind": "fund", "country": "US", "adapter": "sec_nport", "ref": "INDA", "verified": false,
+     "notes": "US-listed, holds Indian stocks: shows what foreign passive money owns in India."},
+    {"id": "EPI", "name": "WisdomTree India Earnings Fund", "kind": "fund", "country": "US", "adapter": "sec_nport", "ref": "EPI", "verified": false}
+  ],
+  "not_supported": [
+    {"id": "QQQ", "reason": "Invesco QQQ Trust is a unit investment trust and does not file N-PORT; use the Nasdaq-100 constituent list from another source."}
+  ]
+}

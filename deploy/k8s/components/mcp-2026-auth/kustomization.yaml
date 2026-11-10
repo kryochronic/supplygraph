@@ -1,0 +1,15 @@
+# Stage 3: turn on the two Keycloak features the MCP 2026-07-28 authorization spec leans on.
+#   cimd                 OAuth Client ID Metadata Documents: a client's id is an HTTPS URL
+#                        to its own metadata, so no registration call is needed (replaces DCR).
+#   resource-indicators  RFC 8707: the client names the MCP server's URL in `resource`, and
+#                        Keycloak puts exactly that in `aud`.
+# Both are experimental in Keycloak 26.8. Their client policies are set in the admin console;
+# the steps are in docs/mcp/README.md, Stage 3.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+patches:
+  - target: {kind: Deployment, name: keycloak}
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value: {name: KC_FEATURES, value: "cimd,resource-indicators"}

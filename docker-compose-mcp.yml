@@ -1,0 +1,111 @@
+# Exchange MCP stack: Keycloak (authorization server) + exchange-mcp (resource server)
+# behind Caddy (TLS). Same per-feature compose pattern used in my other projects: run it on
+# its own, next to docker-compose.yml.
+#
+#   make mcp-up          build, generate mcp.env and certs on first run, start, bootstrap the realm
+#   make mcp-scale N=3   three MCP replicas behind one proxy: works because the server is stateless
+#   make help            everything else
+#
+# URLs (from your Mac):
+#   https://auth.localtest.me:8443   Keycloak (admin console: user `admin`, password in mcp.env)
+#   https://mcp.localtest.me:8443/mcp  the MCP endpoint
+# *.localtest.me resolves to 127.0.0.1 in public DNS. TLS is required: Keycloak's login cookies
+# are Secure, and OAuth 2.1 / MCP require HTTPS for anything but loopback.
+#
+# Hostnames, ports and the realm script are identical to the k3d setup in deploy/, so moving
+# from compose to Kubernetes changes the runtime, not the URLs, tokens or config.
+
+name: supplygraph-mcp
+
+services:
+  proxy:
+    image: caddy:2.10-alpine
+    ports:
+      - "${MCP_HTTPS_PORT:-8443}:443"
+    volumes:
+      - ./deploy/compose/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deploy/.certs:/certs:ro # mkcert certificate, made by `make mcp-certs`
+    networks: [internal]
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:${KEYCLOAK_TAG:-26.8.0}
+    command: ["start-dev"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:?run `make mcp-env` first}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?run `make mcp-env` first}
+      # Every token carries this public issuer, however Keycloak was reached.
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL}
+      # Containers may call Keycloak on its service name (JWKS, admin API).
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      # Stage 3: KEYCLOAK_FEATURES=device-flow,cimd,resource-indicators in mcp.env
+      KC_FEATURES: ${KEYCLOAK_FEATURES:-device-flow}
+    volumes:
+      - keycloak_data:/opt/keycloak/data # dev-mode H2 database; survives `down`, not `down -v`
+    networks: [internal]
+    healthcheck:
+      # The image has no curl; bash can still speak HTTP to the management port.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
+  # One-shot: configures the realm with the same idempotent script the k3d Job runs.
+  keycloak-bootstrap:
+    image: quay.io/keycloak/keycloak:${KEYCLOAK_TAG:-26.8.0}
+    entrypoint: ["bash", "/scripts/bootstrap.sh"]
+    env_file: [mcp.env]
+    environment:
+      HOME: /tmp
+      KC_URL: http://keycloak:8080
+      KC_ADMIN_USER: ${KEYCLOAK_ADMIN_USER}
+      KC_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    volumes:
+      - ./deploy/k8s/base/keycloak-bootstrap.sh:/scripts/bootstrap.sh:ro
+    networks: [internal]
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    restart: "no"
+
+  exchange-mcp:
+    image: sg-exchange-mcp:${MCP_TAG:-dev}
+    build:
+      context: ./mcp-server
+    environment:
+      SG_MCP_PUBLIC_URL: ${MCP_RESOURCE_URL}
+      SG_OIDC_ISSUER: ${OIDC_ISSUER}
+      SG_OIDC_JWKS_URL: http://keycloak:8080/realms/supplygraph/protocol/openid-connect/certs
+      SG_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS}
+      SEC_USER_AGENT: ${SEC_USER_AGENT}
+      SEC_RATE_PER_S: ${SEC_RATE_PER_S_PER_POD:-2}
+      LOG_LEVEL: ${MCP_LOG_LEVEL:-INFO}
+    # No container_name and no host port: `--scale exchange-mcp=N` must be able to add copies.
+    networks: [internal]
+    read_only: true
+    tmpfs: [/tmp]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(urllib.request.urlopen('http://127.0.0.1:8000/readyz').status != 200)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    depends_on:
+      keycloak-bootstrap:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  keycloak_data:
+
+networks:
+  internal:
+    driver: bridge

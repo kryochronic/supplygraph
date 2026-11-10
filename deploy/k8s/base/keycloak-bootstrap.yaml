@@ -1,0 +1,31 @@
+# One-shot Job that configures the realm via the admin API. Jobs are immutable once
+# created: to re-run after editing the script, `make keycloak-bootstrap` deletes and
+# re-creates it.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: keycloak-bootstrap
+spec:
+  backoffLimit: 10
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: kcadm
+          image: quay.io/keycloak/keycloak:26.8.0
+          command: ["bash", "/scripts/bootstrap.sh"]
+          env:
+            - {name: HOME, value: /tmp} # kcadm writes its token cache under $HOME
+            - name: KC_ADMIN_USER
+              valueFrom: {secretKeyRef: {name: sg-secrets, key: KEYCLOAK_ADMIN_USER}}
+            - name: KC_ADMIN_PASSWORD
+              valueFrom: {secretKeyRef: {name: sg-secrets, key: KEYCLOAK_ADMIN_PASSWORD}}
+            - name: SG_USER_PASSWORD
+              valueFrom: {secretKeyRef: {name: sg-secrets, key: SG_USER_PASSWORD}}
+          envFrom:
+            - configMapRef: {name: sg-config}
+          volumeMounts:
+            - {name: scripts, mountPath: /scripts}
+      volumes:
+        - name: scripts
+          configMap: {name: keycloak-bootstrap}

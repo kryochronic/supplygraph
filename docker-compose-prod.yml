@@ -1,0 +1,162 @@
+# SupplyGraph, hosted: the full app behind a Keycloak login, on one VM (MASTER C31, D-38).
+#
+#   make prod-env      once: writes prod.env (gitignored) with random secrets; then edit the hostnames
+#   make prod-up       build and start; Caddy fetches Let's Encrypt certificates on first request
+#   make help          everything else (prod-* targets), and docs/deploy/vm.md for the whole runbook
+#
+#   internet ──443──▶ Caddy ─┬─ ${SG_HOST}   ──▶ oauth2-proxy ──▶ supplygraph (app, port 8000)
+#                            └─ ${AUTH_HOST} ──▶ keycloak (realm `supplygraph`; admin console blocked)
+#
+# Nothing but Caddy publishes a port to the internet. The app has no login of its own: oauth2-proxy lets a
+# request through only with a valid Keycloak session. Keycloak's admin console is reachable only from the VM
+# itself (127.0.0.1:8080), i.e. over an SSH tunnel.
+
+name: supplygraph-prod
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    <<: *restart
+    ports:
+      - "80:80"   # ACME HTTP challenge, then redirect to HTTPS
+      - "443:443"
+    environment:
+      SG_HOST: ${SG_HOST:?set SG_HOST in prod.env}
+      AUTH_HOST: ${AUTH_HOST:?set AUTH_HOST in prod.env}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in prod.env}
+    volumes:
+      - ./deploy/prod/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data # certificates: keep this volume, or Let's Encrypt rate limits bite on rebuilds
+      - caddy_config:/config
+    depends_on: [oauth2-proxy, keycloak]
+
+  postgres:
+    image: postgres:${POSTGRES_TAG:-16-alpine}
+    <<: *restart
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD:?run make prod-env}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:${KEYCLOAK_TAG:-26.8.0}
+    <<: *restart
+    command: ["start"] # production mode: strict hostname, no dev defaults
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?run make prod-env}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      # Every token carries this public issuer, however Keycloak was reached (same pattern as the MCP stack).
+      KC_HOSTNAME: https://${AUTH_HOST}
+      # The admin console is served only on the tunnel address, never on the public host (Caddy blocks it too).
+      KC_HOSTNAME_ADMIN: http://localhost:${KC_ADMIN_TUNNEL_PORT:-8080}
+      # oauth2-proxy and the bootstrap job call Keycloak on its service name.
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HTTP_ENABLED: "true" # TLS ends at Caddy; the hop to Keycloak stays on the compose network
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "127.0.0.1:${KC_ADMIN_TUNNEL_PORT:-8080}:8080" # admin console: ssh -L 8080:127.0.0.1:8080 <vm>
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # The image has no curl; bash can still speak HTTP to the management port.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  # One-shot: realm, your user, and the confidential client oauth2-proxy logs in with. Idempotent.
+  keycloak-bootstrap:
+    image: quay.io/keycloak/keycloak:${KEYCLOAK_TAG:-26.8.0}
+    entrypoint: ["bash", "/scripts/keycloak-app.sh"]
+    environment:
+      HOME: /tmp
+      KC_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN_USER: ${KEYCLOAK_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      SG_HOST: ${SG_HOST}
+      AUTH_HOST: ${AUTH_HOST}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      SG_USER: ${SG_USER:-researcher}
+      SG_USER_EMAIL: ${SG_USER_EMAIL:?set SG_USER_EMAIL in prod.env}
+      SG_USER_FIRST: ${SG_USER_FIRST:-}
+      SG_USER_LAST: ${SG_USER_LAST:-}
+      SG_USER_PASSWORD: ${SG_USER_PASSWORD}
+    volumes:
+      - ./deploy/prod/keycloak-app.sh:/scripts/keycloak-app.sh:ro
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    restart: "no"
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:${OAUTH2_PROXY_TAG:-v7.12.0}
+    <<: *restart
+    environment:
+      OAUTH2_PROXY_PROVIDER: keycloak-oidc
+      OAUTH2_PROXY_CLIENT_ID: supplygraph-web
+      OAUTH2_PROXY_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?run make prod-env}
+      OAUTH2_PROXY_COOKIE_SECRET: ${COOKIE_SECRET:?run make prod-env}
+      OAUTH2_PROXY_COOKIE_SECURE: "true"
+      OAUTH2_PROXY_COOKIE_NAME: _sg_session
+      OAUTH2_PROXY_COOKIE_EXPIRE: 168h
+      OAUTH2_PROXY_COOKIE_REFRESH: 1h
+      # The browser goes to the public Keycloak; server-to-server calls stay inside the compose network.
+      OAUTH2_PROXY_OIDC_ISSUER_URL: https://${AUTH_HOST}/realms/supplygraph
+      OAUTH2_PROXY_SKIP_OIDC_DISCOVERY: "true"
+      OAUTH2_PROXY_LOGIN_URL: https://${AUTH_HOST}/realms/supplygraph/protocol/openid-connect/auth
+      OAUTH2_PROXY_REDEEM_URL: http://keycloak:8080/realms/supplygraph/protocol/openid-connect/token
+      OAUTH2_PROXY_OIDC_JWKS_URL: http://keycloak:8080/realms/supplygraph/protocol/openid-connect/certs
+      OAUTH2_PROXY_PROFILE_URL: http://keycloak:8080/realms/supplygraph/protocol/openid-connect/userinfo
+      OAUTH2_PROXY_VALIDATE_URL: http://keycloak:8080/realms/supplygraph/protocol/openid-connect/userinfo
+      OAUTH2_PROXY_BACKEND_LOGOUT_URL: http://keycloak:8080/realms/supplygraph/protocol/openid-connect/logout?id_token_hint={id_token}
+      OAUTH2_PROXY_REDIRECT_URL: https://${SG_HOST}/oauth2/callback
+      OAUTH2_PROXY_CODE_CHALLENGE_METHOD: S256
+      OAUTH2_PROXY_EMAIL_DOMAINS: "*" # who may log in is decided in Keycloak: registration is off
+      OAUTH2_PROXY_ALLOWED_ROLES: sg-user # realm role; the bootstrap gives it to SG_USER
+      OAUTH2_PROXY_UPSTREAMS: http://supplygraph:8000
+      OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
+      OAUTH2_PROXY_REVERSE_PROXY: "true"
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
+      OAUTH2_PROXY_UPSTREAM_TIMEOUT: 10m # Ask waits for the model
+      OAUTH2_PROXY_PASS_USER_HEADERS: "true"
+    depends_on: [keycloak, supplygraph]
+
+  supplygraph:
+    image: ${SG_IMAGE:-supplygraph:prod}
+    <<: *restart
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      # Hosted models only: there is no Ollama here. Keys come from prod.env, never the image.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      DISG_NODE: ${DISG_NODE:-cloud}
+      DISG_DEFAULT_CONNECTOR: ${DEFAULT_CONNECTOR:-claude}
+    volumes:
+      - sg_data:/app/data # supplygraph.db, data/docs (fetched filings), data/private (connectors.json)
+    # no ports: reachable only through oauth2-proxy
+
+volumes:
+  caddy_data:
+  caddy_config:
+  pg_data:
+  sg_data:

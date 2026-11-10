@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic fixture in the N-PORT-P schema shape; names and ISINs are real, weights are made up. -->
+<edgarSubmission xmlns="http://www.sec.gov/edgar/nport" xmlns:com="http://www.sec.gov/edgar/common">
+  <headerData><submissionType>NPORT-P</submissionType></headerData>
+  <formData>
+    <genInfo>
+      <seriesName>iShares MSCI India ETF</seriesName>
+      <seriesId>S000099999</seriesId>
+      <repPdEnd>2026-08-31</repPdEnd>
+      <repPdDate>2026-06-30</repPdDate>
+    </genInfo>
+    <fundInfo><netAssets>9000000000.00</netAssets></fundInfo>
+    <invstOrSecs>
+      <invstOrSec>
+        <name>HDFC Bank Ltd</name><title>HDFC Bank Ltd</title><cusip>000000000</cusip>
+        <identifiers><isin value="INE040A01034"/></identifiers>
+        <valUSD>720000000</valUSD><pctVal>8.0</pctVal><assetCat>EC</assetCat><invCountry>IN</invCountry>
+      </invstOrSec>
+      <invstOrSec>
+        <name>Reliance Industries Ltd</name><title>Reliance Industries Ltd</title><cusip>000000000</cusip>
+        <identifiers><isin value="INE002A01018"/></identifiers>
+        <valUSD>540000000</valUSD><pctVal>6.0</pctVal><assetCat>EC</assetCat><invCountry>IN</invCountry>
+      </invstOrSec>
+      <invstOrSec>
+        <name>Dixon Technologies (India) Ltd</name><title>Dixon Technologies</title><cusip>000000000</cusip>
+        <identifiers><isin value="INE935N01020"/></identifiers>
+        <valUSD>45000000</valUSD><pctVal>0.5</pctVal><assetCat>EC</assetCat><invCountry>IN</invCountry>
+      </invstOrSec>
+      <invstOrSec>
+        <name>BlackRock Cash Funds: Treasury</name><title>Cash</title><cusip>000000000</cusip>
+        <identifiers><other otherDesc="internal" value="X"/></identifiers>
+        <valUSD>9000000</valUSD><pctVal>0.1</pctVal><assetCat>STIV</assetCat><invCountry>US</invCountry>
+      </invstOrSec>
+    </invstOrSecs>
+  </formData>
+</edgarSubmission>

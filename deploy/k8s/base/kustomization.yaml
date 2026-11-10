@@ -1,0 +1,15 @@
+# Cloud-neutral base. Nothing here names a cloud, a hostname or a secret value:
+# overlays supply those (overlays/local for k3d; add overlays/<cloud> later).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: supplygraph
+resources:
+  - namespace.yaml
+  - keycloak.yaml
+  - keycloak-bootstrap.yaml
+  - mcp.yaml
+  - ingress.yaml
+configMapGenerator:
+  - name: keycloak-bootstrap
+    files:
+      - bootstrap.sh=keycloak-bootstrap.sh

@@ -1,0 +1,32 @@
+# Units the reconcile step (C25) may convert between. The model proposes groups and conversion factors;
+# code accepts a factor only if it matches these scales. Data, not code: add a unit here, not in Python.
+#
+# scale: how many base units one of this unit is (a crore is 10,000,000 rupees, or 100 lakh).
+multipliers:
+  thousand: 1.0e3
+  lakh: 1.0e5
+  million: 1.0e6
+  crore: 1.0e7
+  billion: 1.0e9
+  trillion: 1.0e12
+aliases:
+  k: thousand
+  "'000": thousand
+  "000s": thousand
+  lakhs: lakh
+  lac: lakh
+  lacs: lakh
+  mn: million
+  mln: million
+  millions: million
+  cr: crore
+  crores: crore
+  bn: billion
+  billions: billion
+# what marks an amount as money in rupees; the PDF text layer often prints the rupee sign as a backtick
+currency:
+  INR: ["₹", "rs", "rs.", "inr", "rupees", "`"]
+  USD: ["$", "usd", "us$"]
+# the unit a group of rupee amounts is reported in
+preferred:
+  INR: crore
